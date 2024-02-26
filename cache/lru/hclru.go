@@ -1,9 +1,17 @@
 package lru
 
 import (
+	"TDKCache/service/log"
 	"container/list"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
+
+var lruLogger = log.Mylog.WithFields(logrus.Fields{
+	"component": "TDKCache",
+	"category":  "LRU",
+})
 
 type HCCache struct {
 	heatCapacity int64                         // 热数据区缓存容量
@@ -23,8 +31,8 @@ type hcEntry struct {
 	timestamp int64  // 加入时间
 }
 
-func NewEntry(key string, value Value) *hcEntry {
-	return &hcEntry{key: key, value: value, timestamp: time.Now().UnixMilli()}
+func NewEntry(key string, value Value, t int64) *hcEntry {
+	return &hcEntry{key: key, value: value, timestamp: t}
 }
 
 func (e *hcEntry) Len() int {
@@ -32,7 +40,7 @@ func (e *hcEntry) Len() int {
 }
 
 func (e *hcEntry) ResetTs() {
-	e.timestamp = time.Now().UnixMilli()
+	e.timestamp = time.Now().Unix()
 }
 
 func NewHCCache(capacity int64, onEvicted func(key string, value Value)) *HCCache {
@@ -49,7 +57,7 @@ func NewHCCache(capacity int64, onEvicted func(key string, value Value)) *HCCach
 	}
 }
 
-func (c *HCCache) Add(key string, value Value) bool {
+func (c *HCCache) Add(key string, value Value, t int64) bool {
 	if element, ok := c.heatCache[key]; ok {
 		// 如果数据在热数据区,移动到链表头
 		c.heatLinklist.MoveToFront(element)
@@ -57,10 +65,11 @@ func (c *HCCache) Add(key string, value Value) bool {
 
 		c.heatLength += int64(value.Len()) - int64(e.value.Len())
 		e.value = value
+		e.timestamp = t
 	} else if element, ok := c.coldCache[key]; ok {
 		// 如果数据在冷数据区,根据访问间隔判断是否需要移动到热数据区
 		e := element.Value.(*hcEntry)
-		if time.Now().UnixMilli()-e.timestamp < 1000 {
+		if t-e.timestamp < 1000 {
 			// 如果间隔小于1s,加入热数据区
 			c.coldLinklist.Remove(element)
 			c.coldLength -= int64(e.Len())
@@ -68,11 +77,12 @@ func (c *HCCache) Add(key string, value Value) bool {
 
 			c.heatCache[key] = c.heatLinklist.PushFront(e)
 			c.heatLength += int64(e.Len())
+			e.timestamp = t
 		}
 		// 如果大于1s,则什么都不做
 	} else {
 		// 新数据加入冷数据区的链表头
-		e := NewEntry(key, value)
+		e := NewEntry(key, value, t)
 		c.coldLength += int64(e.Len())
 		c.coldCache[key] = c.coldLinklist.PushFront(e)
 	}
@@ -84,31 +94,37 @@ func (c *HCCache) Add(key string, value Value) bool {
 
 }
 
-func (c *HCCache) Get(key string) (Value, bool) {
+func (c *HCCache) Get(key string, t int64) (Value, bool) {
+	lruLogger.Debug("get key [%s] from lru\n", key)
 	if elem, ok := c.heatCache[key]; ok {
+		lruLogger.Debug("key [%s] in heat cache\n", key)
 		c.heatLinklist.MoveToFront(elem)
+		elem.Value.(*hcEntry).timestamp = t
 		return elem.Value.(*hcEntry).value, true
 	} else if elem, ok := c.coldCache[key]; ok {
+		lruLogger.Debug("key [%s] in cold cache\n", key)
 		e := elem.Value.(*hcEntry)
-		if time.Now().UnixMilli()-e.timestamp < 1000 {
+		if t-e.timestamp < 1 {
 			// 如果间隔小于1s,加入热数据区
+			lruLogger.Debug("move key [%s] to heat cache\n", key)
 			c.coldLinklist.Remove(elem)
 			c.coldLength -= int64(e.Len())
 			delete(c.coldCache, key)
 
 			c.heatCache[key] = c.heatLinklist.PushFront(e)
 			c.heatLength += int64(e.Len())
+			e.timestamp = t
 
 			c.replace()
 		}
 		return e.value, true
 	}
-
+	lruLogger.Debug("key [%s] not in lru\n", key)
 	return nil, false
 
 }
 
-func (c *HCCache) Delete(key string) (Value, bool) {
+func (c *HCCache) Delete(key string) {
 	if elem, ok := c.heatCache[key]; ok {
 		c.heatLinklist.Remove(elem)
 		e := elem.Value.(*hcEntry)
@@ -117,7 +133,6 @@ func (c *HCCache) Delete(key string) (Value, bool) {
 		if c.onEvicted != nil {
 			c.onEvicted(e.key, e.value)
 		}
-		return e.value, true
 	} else if elem, ok := c.coldCache[key]; ok {
 		c.coldLinklist.Remove(elem)
 		e := elem.Value.(*hcEntry)
@@ -126,9 +141,7 @@ func (c *HCCache) Delete(key string) (Value, bool) {
 		if c.onEvicted != nil {
 			c.onEvicted(e.key, e.value)
 		}
-		return e.value, true
 	}
-	return nil, false
 }
 
 func (c *HCCache) replace() {
