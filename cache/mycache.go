@@ -1,6 +1,7 @@
 package mycache
 
 import (
+	"TDKCache/cache/singleflight"
 	"TDKCache/peers"
 	"TDKCache/service/log"
 	"fmt"
@@ -10,10 +11,11 @@ import (
 )
 
 type Group struct {
-	name      string
-	getter    Getter // 缓存未命中时的回调函数
-	mainCache *cache
-	peers     peers.PeerPicker
+	name      string              // group名
+	getter    Getter              // 缓存未命中时的回调函数
+	mainCache *cache              // LRU缓存
+	peers     peers.PeerPicker    // 远程节点选择表
+	loader    *singleflight.Group // 控制远程请求
 }
 
 type Getter interface {
@@ -45,6 +47,7 @@ func NewGroup(name string, capacity int64, getter Getter) *Group {
 		name:      name,
 		getter:    getter,
 		mainCache: NewCache(capacity, nil),
+		loader:    &singleflight.Group{},
 	}
 	groups[name] = g
 	return g
@@ -82,17 +85,24 @@ func (g *Group) getFromPeer(peer peers.PeerGetter, key string) (ByteView, error)
 
 func (g *Group) load(key string) (value ByteView, err error) {
 	// 当key不在缓存时,从远程或本地获取需要缓存的值
-	// 从远程获取
-	if g.peers != nil {
-		if peer, ok := g.peers.PickPeer(key); ok {
-			if value, err = g.getFromPeer(peer, key); err == nil {
-				return value, nil
+	// 从远程获取,使用loader避免缓存击穿
+	// 讲原流程包装为fn函数传入Do方法中
+	retValue, err := g.loader.Do(key, func() (interface{}, error) {
+		if g.peers != nil {
+			if peer, ok := g.peers.PickPeer(key); ok {
+				if value, err = g.getFromPeer(peer, key); err == nil {
+					return value, nil
+				}
+				groupLogger.Info("failed to get from peer: %v", err)
 			}
-			groupLogger.Info("failed to get from peer: %v", err)
 		}
+		// 先从本地获取缓存
+		return g.getLocally(key)
+	})
+	if err == nil {
+		return retValue.(ByteView), nil
 	}
-	// 先从本地获取缓存
-	return g.getLocally(key)
+	return
 
 }
 

@@ -77,7 +77,7 @@ func init() {
 	})
 
 	// 设置日志级别。低于 Debug 级别的 Trace 将不会被打印
-	Mylog.logger.SetLevel(logrus.DebugLevel)
+	Mylog.logger.SetLevel(logrus.InfoLevel)
 
 	// 设置日志切割 rotatelogs
 	writer, _ := rotatelogs.New(

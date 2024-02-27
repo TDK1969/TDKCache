@@ -7,8 +7,8 @@ go build -o server
 
 sleep 2
 echo ">>> start test"
-curl "http://localhost:9999/api?key=Tom" &
-curl "http://localhost:9999/api?key=Tom" &
-curl "http://localhost:9999/api?key=Tom" &
+curl "http://localhost:58500/TDKCache/Get?group=scores&key=Tom" &
+curl "http://localhost:58501/TDKCache/Get?group=scores&key=Tom" &
+curl "http://localhost:58502/TDKCache/Get?group=scores&key=Tom" &
 
 wait

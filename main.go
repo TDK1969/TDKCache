@@ -5,6 +5,7 @@ import (
 	http_server "TDKCache/peers/http"
 	"flag"
 	"fmt"
+	"time"
 )
 
 var db = map[string]string{
@@ -17,7 +18,7 @@ var db = map[string]string{
 func createGroup() *mycache.Group {
 	return mycache.NewGroup("scores", 2<<10, mycache.GetterFunc(
 		func(key string) ([]byte, error) {
-			fmt.Println("[SlowDB] search key", key)
+			time.Sleep(2 * time.Second)
 			if v, ok := db[key]; ok {
 				return []byte(v), nil
 			}
