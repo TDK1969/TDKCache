@@ -2,6 +2,7 @@ package http_server
 
 import (
 	"TDKCache/peers"
+	"TDKCache/peers/protobuf/pb"
 	"TDKCache/service/consistenthash"
 	"TDKCache/service/log"
 	"fmt"
@@ -12,11 +13,12 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
 	defaultReplicas = 50
-	defaultBasePath = "/TDKCache/"
+	defaultBasePath = "/TDKCache"
 )
 
 type HTTPPool struct {
@@ -89,6 +91,9 @@ type httpGetter struct {
 	baseURL string
 }
 
+// 目前实现的不是gRPC
+// HTTP
+/*
 func (h *httpGetter) Get(group string, key string) ([]byte, error) {
 	// 构造http请求
 	u := fmt.Sprintf(
@@ -117,4 +122,41 @@ func (h *httpGetter) Get(group string, key string) ([]byte, error) {
 	}
 	hsLogger.Debug("successfully get key")
 	return bytes, nil
+}
+*/
+
+// protobuf
+func (h *httpGetter) Get(in *pb.Request, out *pb.Response) error {
+	u := fmt.Sprintf(
+		"http://%v/PBGet?group=%v&key=%v",
+		h.baseURL,
+		url.QueryEscape(in.GetGroup()),
+		url.QueryEscape(in.GetKey()),
+	)
+	hsLogger.Debug("send get request: %v", u)
+	res, err := http.Get(u)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		hsLogger.Error("server return: %v", res.Status)
+		return fmt.Errorf("server return: %v", res.Status)
+	}
+
+	bytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		hsLogger.Error("reading response body: %v", err)
+		return fmt.Errorf("reading response body: %v", err)
+	}
+
+	// 解码protobuf响应
+	if err = proto.Unmarshal(bytes, out); err != nil {
+		hsLogger.Error("decoding response body: %v", err)
+		return fmt.Errorf("decoding response body: %v", err)
+	}
+
+	return nil
 }
