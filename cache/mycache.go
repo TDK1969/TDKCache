@@ -3,7 +3,6 @@ package mycache
 import (
 	"TDKCache/cache/singleflight"
 	"TDKCache/peers"
-	"TDKCache/peers/protobuf/pb"
 	"TDKCache/service/log"
 	"fmt"
 	"sync"
@@ -76,7 +75,7 @@ func (g *Group) Get(key string) (ByteView, error) {
 
 // getFromPeer get key from peer
 //HTTP
-/*
+
 func (g *Group) getFromPeer(peer peers.PeerGetter, key string) (ByteView, error) {
 	if bytes, err := peer.Get(g.name, key); err != nil {
 		groupLogger.Info("failed to get key [%s] from peer", key)
@@ -85,20 +84,21 @@ func (g *Group) getFromPeer(peer peers.PeerGetter, key string) (ByteView, error)
 		return ByteView{data: bytes}, nil
 	}
 }
-*/
-func (g *Group) getFromPeer(peer peers.PeerGetter, key string) (ByteView, error) {
-	req := &pb.Request{
-		Group: g.name,
-		Key:   key,
-	}
-	res := &pb.Response{}
-	err := peer.Get(req, res)
-	if err != nil {
-		return ByteView{}, err
-	}
-	return ByteView{data: res.Value}, nil
-}
 
+/*
+	func (g *Group) getFromPeer(peer peers.PeerGetter, key string) (ByteView, error) {
+		req := &pb.Request{
+			Group: g.name,
+			Key:   key,
+		}
+		res := &pb.Response{}
+		err := peer.Get(req, res)
+		if err != nil {
+			return ByteView{}, err
+		}
+		return ByteView{data: res.Value}, nil
+	}
+*/
 func (g *Group) load(key string) (value ByteView, err error) {
 	// 当key不在缓存时,从远程或本地获取需要缓存的值
 	// 从远程获取,使用loader避免缓存击穿

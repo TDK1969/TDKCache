@@ -84,6 +84,12 @@ func (p *HTTPPool) PickPeer(key string) (peers.PeerGetter, bool) {
 	return nil, false
 }
 
+func (p *HTTPPool) Start(addrs []string, g peers.GroupCache) {
+	p.Set(addrs...)
+	g.RegisterPeers(p)
+	p.ListenAndServe()
+}
+
 // HTTP客户端的实现
 // baseURL的格式: http://10.0.0.2:8080/TDKCache/
 // TODO: 改进为RPC模式
@@ -91,13 +97,11 @@ type httpGetter struct {
 	baseURL string
 }
 
-// 目前实现的不是gRPC
-// HTTP
-/*
+// 使用HTTP利用protobuf传输
+
 func (h *httpGetter) Get(group string, key string) ([]byte, error) {
-	// 构造http请求
 	u := fmt.Sprintf(
-		"http://%v/Get?group=%v&key=%v",
+		"http://%v/PBGet?group=%v&key=%v",
 		h.baseURL,
 		url.QueryEscape(group),
 		url.QueryEscape(key),
@@ -117,46 +121,16 @@ func (h *httpGetter) Get(group string, key string) ([]byte, error) {
 
 	bytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		hsLogger.Error("reading response bod: %v", err)
-		return nil, fmt.Errorf("reading response bod: %v", err)
-	}
-	hsLogger.Debug("successfully get key")
-	return bytes, nil
-}
-*/
-
-// protobuf
-func (h *httpGetter) Get(in *pb.Request, out *pb.Response) error {
-	u := fmt.Sprintf(
-		"http://%v/PBGet?group=%v&key=%v",
-		h.baseURL,
-		url.QueryEscape(in.GetGroup()),
-		url.QueryEscape(in.GetKey()),
-	)
-	hsLogger.Debug("send get request: %v", u)
-	res, err := http.Get(u)
-	if err != nil {
-		return err
-	}
-
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		hsLogger.Error("server return: %v", res.Status)
-		return fmt.Errorf("server return: %v", res.Status)
-	}
-
-	bytes, err := io.ReadAll(res.Body)
-	if err != nil {
 		hsLogger.Error("reading response body: %v", err)
-		return fmt.Errorf("reading response body: %v", err)
+		return nil, fmt.Errorf("reading response body: %v", err)
 	}
 
+	out := &pb.Response{}
 	// 解码protobuf响应
 	if err = proto.Unmarshal(bytes, out); err != nil {
 		hsLogger.Error("decoding response body: %v", err)
-		return fmt.Errorf("decoding response body: %v", err)
+		return nil, fmt.Errorf("decoding response body: %v", err)
 	}
 
-	return nil
+	return out.Value, nil
 }

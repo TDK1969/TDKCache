@@ -3,18 +3,22 @@ package main
 import (
 	"TDKCache/api"
 	mycache "TDKCache/cache"
+	"TDKCache/peers"
 	http_server "TDKCache/peers/http"
 	"flag"
 	"fmt"
 	"time"
 )
 
-var db = map[string]string{
-	"Tom":  "630",
-	"Tom1": "123",
-	"Jack": "589",
-	"Sam":  "567",
-}
+var (
+	db = map[string]string{
+		"Tom":  "630",
+		"Tom1": "123",
+		"Jack": "589",
+		"Sam":  "567",
+	}
+	s peers.PeerServer
+)
 
 func createGroup() *mycache.Group {
 	return mycache.NewGroup("scores", 2<<10, mycache.GetterFunc(
@@ -25,14 +29,6 @@ func createGroup() *mycache.Group {
 			}
 			return nil, fmt.Errorf("%s not exist", key)
 		}))
-}
-
-// 启动CacheServer
-func startCacheServer(addr string, addrs []string, g *mycache.Group) {
-	p := http_server.NewHTTPPool(addr)
-	p.Set(addrs...)
-	g.RegisterPeers(p)
-	p.ListenAndServe()
 }
 
 func main() {
@@ -60,6 +56,7 @@ func main() {
 		p := api.NewAPIPool(apiAddr)
 		go p.ListenAndServe()
 	}
-	startCacheServer(addrMap[port], []string(addrs), g)
 
+	s = http_server.NewHTTPPool(addrMap[port])
+	s.Start(addrs, g)
 }
