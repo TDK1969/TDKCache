@@ -3,6 +3,7 @@ package http_server
 import (
 	mycache "TDKCache/cache"
 	"TDKCache/peers/protobuf/pb"
+	"TDKCache/service/http_resp"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -11,45 +12,8 @@ import (
 
 func registerHandlers() *httprouter.Router {
 	router := httprouter.New()
-
-	router.GET("/TDKCache/Get", getGroupKeyHandler)
 	router.GET("/TDKCache/PBGet", pbGetGroupKeyHandler)
 	return router
-}
-
-func getGroupKeyHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	values := r.URL.Query()
-
-	groupName := values.Get("group")
-	if groupName == "" {
-		hsLogger.Error("lack of necessary param [group]")
-		SendErrorResponse(w, ErrorURLParamsParseFailed)
-		return
-	}
-
-	key := values.Get("key")
-	if key == "" {
-		hsLogger.Error("lack of necessary param [key]")
-		SendErrorResponse(w, ErrorURLParamsParseFailed)
-		return
-	}
-
-	group := mycache.GetGroup(groupName)
-	if group == nil {
-		hsLogger.Error("no such group: %s", groupName)
-		SendErrorResponse(w, ErrorGroupUnexists)
-		return
-	}
-
-	view, err := group.Get(key)
-	if err != nil {
-		hsLogger.Error("Internal error: %v", err)
-		SendErrorResponse(w, ErrorInternalFaults)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(view.ByteSlice())
 }
 
 func pbGetGroupKeyHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -58,28 +22,29 @@ func pbGetGroupKeyHandler(w http.ResponseWriter, r *http.Request, p httprouter.P
 	groupName := values.Get("group")
 	if groupName == "" {
 		hsLogger.Error("lack of necessary param [group]")
-		SendErrorResponse(w, ErrorURLParamsParseFailed)
+
+		http_resp.SendErrorResponse(w, http_resp.ErrorURLParamsParseFailed)
 		return
 	}
 
 	key := values.Get("key")
 	if key == "" {
 		hsLogger.Error("lack of necessary param [key]")
-		SendErrorResponse(w, ErrorURLParamsParseFailed)
+		http_resp.SendErrorResponse(w, http_resp.ErrorURLParamsParseFailed)
 		return
 	}
 
 	group := mycache.GetGroup(groupName)
 	if group == nil {
 		hsLogger.Error("no such group: %s", groupName)
-		SendErrorResponse(w, ErrorGroupUnexists)
+		http_resp.SendErrorResponse(w, http_resp.ErrorGroupUnexists)
 		return
 	}
 
 	view, err := group.Get(key)
 	if err != nil {
 		hsLogger.Error("Internal error: %v", err)
-		SendErrorResponse(w, ErrorInternalFaults)
+		http_resp.SendErrorResponse(w, http_resp.ErrorInternalFaults)
 		return
 	}
 
@@ -87,7 +52,7 @@ func pbGetGroupKeyHandler(w http.ResponseWriter, r *http.Request, p httprouter.P
 	body, err := proto.Marshal(&pb.Response{Value: view.ByteSlice()})
 	if err != nil {
 		hsLogger.Error("Encoding response error: %v", err)
-		SendErrorResponse(w, ErrorInternalFaults)
+		http_resp.SendErrorResponse(w, http_resp.ErrorInternalFaults)
 		return
 	}
 

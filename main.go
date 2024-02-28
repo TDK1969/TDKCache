@@ -1,6 +1,7 @@
 package main
 
 import (
+	"TDKCache/api"
 	mycache "TDKCache/cache"
 	http_server "TDKCache/peers/http"
 	"flag"
@@ -36,7 +37,9 @@ func startCacheServer(addr string, addrs []string, g *mycache.Group) {
 
 func main() {
 	var port int
+	var apiPort int
 	flag.IntVar(&port, "port", 58500, "Cache port")
+	flag.IntVar(&apiPort, "api", -1, "Frontend API port")
 	flag.Parse()
 
 	addrMap := map[int]string{
@@ -50,6 +53,13 @@ func main() {
 	}
 
 	g := createGroup()
+
+	if apiPort != -1 {
+		// 开启api服务
+		apiAddr := fmt.Sprintf("localhost:%d", apiPort)
+		p := api.NewAPIPool(apiAddr)
+		go p.ListenAndServe()
+	}
 	startCacheServer(addrMap[port], []string(addrs), g)
 
 }
