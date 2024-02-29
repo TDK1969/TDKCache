@@ -4,7 +4,7 @@ import (
 	"TDKCache/api"
 	mycache "TDKCache/cache"
 	"TDKCache/peers"
-	http_server "TDKCache/peers/http"
+	"TDKCache/peers/rpc"
 	"flag"
 	"fmt"
 	"time"
@@ -57,6 +57,7 @@ func main() {
 		go p.ListenAndServe()
 	}
 
-	s = http_server.NewHTTPPool(addrMap[port])
+	//s = http_server.NewHTTPPool(addrMap[port])
+	s = rpc.NewRPCServer(addrMap[port])
 	s.Start(addrs, g)
 }

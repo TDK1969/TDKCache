@@ -22,7 +22,6 @@ func pbGetGroupKeyHandler(w http.ResponseWriter, r *http.Request, p httprouter.P
 	groupName := values.Get("group")
 	if groupName == "" {
 		hsLogger.Error("lack of necessary param [group]")
-
 		http_resp.SendErrorResponse(w, http_resp.ErrorURLParamsParseFailed)
 		return
 	}

@@ -60,7 +60,6 @@ func (p *HTTPPool) Set(peers ...string) {
 	for _, peer := range peers {
 		p.httpGetters[peer] = &httpGetter{baseURL: peer + defaultBasePath}
 	}
-
 }
 
 func (p *HTTPPool) Add(peers ...string) {
@@ -92,7 +91,6 @@ func (p *HTTPPool) Start(addrs []string, g peers.GroupCache) {
 
 // HTTP客户端的实现
 // baseURL的格式: http://10.0.0.2:8080/TDKCache/
-// TODO: 改进为RPC模式
 type httpGetter struct {
 	baseURL string
 }
