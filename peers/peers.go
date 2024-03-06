@@ -7,9 +7,10 @@ type PeerPicker interface {
 
 // PeerServer接口
 type PeerServer interface {
-	Set(peers ...string)
+	Set(peer string)
+	Del(peer string)
 	PickPeer(key string) (PeerGetter, bool)
-	Start(addrs []string, g GroupCache)
+	Start(g GroupCache)
 }
 
 // 缓存group接口

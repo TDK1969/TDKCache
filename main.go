@@ -23,6 +23,7 @@ var (
 func createGroup() *mycache.Group {
 	return mycache.NewGroup("scores", 2<<10, mycache.GetterFunc(
 		func(key string) ([]byte, error) {
+			// 模拟慢查询
 			time.Sleep(2 * time.Second)
 			if v, ok := db[key]; ok {
 				return []byte(v), nil
@@ -32,32 +33,22 @@ func createGroup() *mycache.Group {
 }
 
 func main() {
-	var port int
+	var serverPort int
 	var apiPort int
-	flag.IntVar(&port, "port", 58500, "Cache port")
+	flag.IntVar(&serverPort, "port", 58500, "Cache port")
 	flag.IntVar(&apiPort, "api", -1, "Frontend API port")
 	flag.Parse()
-
-	addrMap := map[int]string{
-		58500: "localhost:58500",
-		58501: "localhost:58501",
-		58502: "localhost:58502",
-	}
-	var addrs []string
-	for _, v := range addrMap {
-		addrs = append(addrs, v)
-	}
 
 	g := createGroup()
 
 	if apiPort != -1 {
 		// 开启api服务
-		apiAddr := fmt.Sprintf("localhost:%d", apiPort)
+		apiAddr := fmt.Sprintf(":%d", apiPort)
 		p := api.NewAPIPool(apiAddr)
 		go p.ListenAndServe()
 	}
 
 	//s = http_server.NewHTTPPool(addrMap[port])
-	s = rpc.NewRPCServer(addrMap[port])
-	s.Start(addrs, g)
+	s = rpc.NewRPCServer(fmt.Sprintf(":%d", serverPort))
+	s.Start(g)
 }

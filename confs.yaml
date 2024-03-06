@@ -1,0 +1,10 @@
+etcd:
+  endpoints: "http://your.etcd.endpoint"
+  ttl: 10
+  servicePrefix: "TDKCache/RPC Server/"
+log:
+  logdir: "/your/path/to/log"
+
+server:
+  defaultReplicas: 50
+

@@ -2,7 +2,9 @@ package rpc
 
 import (
 	mycache "TDKCache/cache"
+	"TDKCache/conf"
 	"TDKCache/peers"
+	etcdservice "TDKCache/peers/etcd_service"
 	"TDKCache/service/consistenthash"
 	"TDKCache/service/log"
 	"context"
@@ -29,6 +31,8 @@ type RPCServer struct {
 	getters  map[string]*RPCGetter
 	// 通过匿名字段内嵌结构体实现继承
 	UnimplementedPeerServiceServer
+	register  *etcdservice.ServiceRegister
+	discovery *etcdservice.ServiceDiscovery
 }
 
 var rpcLogger *log.TubeEntry
@@ -42,25 +46,30 @@ func newLogger(addr string) *log.TubeEntry {
 
 func NewRPCServer(addr string) *RPCServer {
 	rpcLogger = newLogger(addr)
-	p := &RPCServer{
-		self: addr,
-		addr: addr,
+	s := &RPCServer{
+		self:     addr,
+		addr:     addr,
+		peersMap: consistenthash.NewHashRing(nil, defaultReplicas),
+		getters:  make(map[string]*RPCGetter),
 	}
-	return p
+	return s
 }
 
-func (s *RPCServer) Set(peers ...string) {
+func (s *RPCServer) Set(peer string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.peersMap = consistenthash.NewHashRing(nil, defaultReplicas)
-	s.peersMap.Add(peers...)
-	s.getters = make(map[string]*RPCGetter)
+	s.peersMap.Add(peer)
+	s.getters[peer] = NewRPCGetter(peer)
 
-	for _, peer := range peers {
-		s.getters[peer] = NewRPCGetter(peer)
-	}
+}
 
+func (s *RPCServer) Del(peer string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.peersMap.Del(peer)
+	delete(s.getters, peer)
 }
 
 func (s *RPCServer) PickPeer(key string) (peers.PeerGetter, bool) {
@@ -102,9 +111,41 @@ func (s *RPCServer) listenAndServe() {
 	}
 }
 
-func (s *RPCServer) Start(addrs []string, g peers.GroupCache) {
+func (s *RPCServer) Start(g peers.GroupCache) {
 	rpcLogger.Info("Start RPC server")
-	s.Set(addrs...)
+
+	// 进行服务发现
+	if s.discovery == nil {
+		discovery, err := etcdservice.NewServiceDiscovery(
+			[]string{conf.Conf.GetString("etcd.endpoints")},
+		)
+		if err != nil {
+			rpcLogger.Panic("new service discovery: %v", err)
+		}
+		s.discovery = discovery
+
+		//s.discovery.GetServices()
+	}
+	s.discovery.WatchService(
+		conf.Conf.GetString("etcd.servicePrefix"),
+		s.Set,
+		s.Del,
+	)
+
+	if s.register == nil {
+		register, err := etcdservice.NewServiceResigter(
+			[]string{conf.Conf.GetString("etcd.endpoints")},
+			conf.Conf.GetString("etcd.servicePrefix")+s.addr,
+			s.addr,
+			conf.Conf.GetInt64("etcd.ttl"),
+		)
+		if err != nil {
+			rpcLogger.Panic("new service register: %v", err)
+		}
+		s.register = register
+	}
+	s.register.ListenLeaseRespChan()
+
 	g.RegisterPeers(s)
 	s.listenAndServe()
 }
