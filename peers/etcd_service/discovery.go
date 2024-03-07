@@ -1,6 +1,7 @@
 package etcdservice
 
 import (
+	"TDKCache/service/log"
 	"context"
 	"sync"
 	"time"
@@ -8,6 +9,8 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
+
+var dLogger = log.NewLogger("etcd", "Discovery")
 
 // 定义服务发现时的回调函数
 type ServiceSetCallBackFunc func(service string)
@@ -31,7 +34,7 @@ func NewServiceDiscovery(endpoints []string) (*ServiceDiscovery, error) {
 		DialTimeout: 5 * time.Second,
 	})
 	if err != nil {
-		logger.Error("get etcd client: %v", err)
+		dLogger.Error("get etcd client: %v", err)
 		return nil, err
 	}
 
@@ -45,7 +48,7 @@ func (s *ServiceDiscovery) WatchService(prefix string, setFn ServiceSetCallBackF
 	// 获取现有key
 	resp, err := s.cli.Get(context.Background(), prefix, clientv3.WithPrefix())
 	if err != nil {
-		logger.Error("get service: %v", err)
+		dLogger.Error("get service: %v", err)
 		return err
 	}
 	for _, ev := range resp.Kvs {
@@ -60,7 +63,7 @@ func (s *ServiceDiscovery) WatchService(prefix string, setFn ServiceSetCallBackF
 // watcher 监听前缀
 func (s *ServiceDiscovery) watcher(prefix string, setFn ServiceSetCallBackFunc, delFn ServiceDelCallBackFunc) {
 	rch := s.cli.Watch(context.Background(), prefix, clientv3.WithPrefix())
-	logger.Info("Watching prefix: %s", prefix)
+	dLogger.Info("Watching prefix: %s", prefix)
 	// 监听通道
 	for resp := range rch {
 		for _, ev := range resp.Events {
@@ -82,7 +85,7 @@ func (s *ServiceDiscovery) SetService(key, value string, fn ServiceSetCallBackFu
 	if fn != nil {
 		fn(value)
 	}
-	logger.Info("set service key: %s -> value: %s", key, value)
+	dLogger.Info("set service key: %s -> value: %s", key, value)
 }
 
 // DeleteServie 删除服务
@@ -93,7 +96,7 @@ func (s *ServiceDiscovery) DeleteServie(key string, fn ServiceDelCallBackFunc) {
 		fn(s.serviceMap[key])
 	}
 	delete(s.serviceMap, key)
-	logger.Info("delete service key: %s", key)
+	dLogger.Info("delete service key: %s", key)
 }
 
 // GetServices 获取服务地址

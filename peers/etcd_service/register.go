@@ -6,14 +6,10 @@ import (
 
 	"context"
 
-	"github.com/sirupsen/logrus"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-var logger = log.Mylog.WithFields(logrus.Fields{
-	"component": "TDKCache",
-	"category":  "etcd Service",
-})
+var logger = log.NewLogger("etcd", "Register")
 
 // ServiceRegister 创建租约注册服务
 type ServiceRegister struct {

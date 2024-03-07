@@ -58,3 +58,7 @@ func (c *config) GetInt(key string) int {
 func (c *config) GetInt64(key string) int64 {
 	return c.viper.GetInt64(key)
 }
+
+func (c *config) GetUint32(key string) uint32 {
+	return c.viper.GetUint32(key)
+}

@@ -2,8 +2,17 @@ etcd:
   endpoints: "http://your.etcd.endpoint"
   ttl: 10
   servicePrefix: "TDKCache/RPC Server/"
+
 log:
-  logdir: "/your/path/to/log"
+  logDir: "/your/path/to/log"
+  # 0 - PanicLevel | 1 - FatalLevel | 2 - ErrorLevel 
+  # 3 - WarnLevel  | 4 - InfoLevel  | 5 - DebugLevel
+  # 6 - TraceLevel
+  logLevel: 4
+
+cache:
+  # Seconds
+  expireTime: 600
 
 server:
   defaultReplicas: 50

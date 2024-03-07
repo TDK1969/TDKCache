@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -30,17 +29,10 @@ type HTTPPool struct {
 	router      *httprouter.Router
 }
 
-var hsLogger *log.TubeEntry
-
-func newLogger(addr string) *log.TubeEntry {
-	return log.Mylog.WithFields(logrus.Fields{
-		"component": "TDKCache",
-		"category":  fmt.Sprintf("HTTP Server <%s>", addr),
-	})
-}
+var hsLogger *log.LogEntry
 
 func NewHTTPPool(addr string) *HTTPPool {
-	hsLogger = newLogger(addr)
+	hsLogger = log.NewLogger("HTTP", fmt.Sprintf("Server <%s>", addr))
 	p := &HTTPPool{
 		self:   addr,
 		addr:   addr,

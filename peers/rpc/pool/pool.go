@@ -7,21 +7,12 @@ import (
 	"math"
 	"sync"
 	"sync/atomic"
-
-	"github.com/sirupsen/logrus"
 )
 
 // ErrClosed is the error resulting if the pool is closed via pool.Close().
 var ErrClosed = errors.New("pool is closed")
 
-var logger *log.TubeEntry
-
-func newLogger(addr string) *log.TubeEntry {
-	return log.Mylog.WithFields(logrus.Fields{
-		"component": "TDKCache",
-		"category":  fmt.Sprintf("RPC Pool -> <%s>", addr),
-	})
-}
+var logger *log.LogEntry
 
 // Pool grpc连接池的接口
 type Pool interface {
@@ -80,7 +71,7 @@ type pool struct {
 
 // New 创建一个连接池
 func NewRPCPool(address string, option Options) (Pool, error) {
-	logger = newLogger(address)
+	logger = log.NewLogger("RPC Pool", fmt.Sprintf(" -> %s", address))
 	if address == "" {
 		return nil, errors.New("invalid address settings")
 	}

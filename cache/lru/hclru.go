@@ -4,14 +4,9 @@ import (
 	"TDKCache/service/log"
 	"container/list"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
-var lruLogger = log.Mylog.WithFields(logrus.Fields{
-	"component": "TDKCache",
-	"category":  "LRU",
-})
+var lruLogger = log.NewLogger("Cache", "LRU")
 
 type HCCache struct {
 	heatCapacity int64                         // 热数据区缓存容量

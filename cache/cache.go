@@ -2,23 +2,17 @@ package mycache
 
 import (
 	"TDKCache/cache/lru"
+	"TDKCache/service/conf"
 	"TDKCache/service/log"
 	"sync"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 const deleteChanCap = 100
 
-const expireTime = time.Minute * 10 / 1e9
+var expireTime = time.Second * time.Duration(conf.Conf.GetInt64("cache.expireTime"))
 
-//const expireTime = (time.Second * 2) / 1e9
-
-var cacheLogger = log.Mylog.WithFields(logrus.Fields{
-	"component": "TDKCache",
-	"category":  "Cache",
-})
+var cacheLogger = log.NewLogger("Cache", "Cache")
 
 // 进行并发读写的封装
 type cache struct {

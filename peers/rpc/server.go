@@ -2,9 +2,9 @@ package rpc
 
 import (
 	mycache "TDKCache/cache"
-	"TDKCache/conf"
 	"TDKCache/peers"
 	etcdservice "TDKCache/peers/etcd_service"
+	"TDKCache/service/conf"
 	"TDKCache/service/consistenthash"
 	"TDKCache/service/log"
 	"context"
@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -35,17 +34,10 @@ type RPCServer struct {
 	discovery *etcdservice.ServiceDiscovery
 }
 
-var rpcLogger *log.TubeEntry
-
-func newLogger(addr string) *log.TubeEntry {
-	return log.Mylog.WithFields(logrus.Fields{
-		"component": "TDKCache",
-		"category":  fmt.Sprintf("RPC Server <%s>", addr),
-	})
-}
+var rpcLogger *log.LogEntry
 
 func NewRPCServer(addr string) *RPCServer {
-	rpcLogger = newLogger(addr)
+	rpcLogger = log.NewLogger("RPC Server", fmt.Sprintf("Server <%s>", addr))
 	s := &RPCServer{
 		self:     addr,
 		addr:     addr,

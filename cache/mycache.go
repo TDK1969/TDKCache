@@ -6,8 +6,6 @@ import (
 	"TDKCache/service/log"
 	"fmt"
 	"sync"
-
-	"github.com/sirupsen/logrus"
 )
 
 type Group struct {
@@ -31,10 +29,7 @@ func (f GetterFunc) Get(key string) ([]byte, error) {
 var (
 	mu          sync.RWMutex // 读写锁
 	groups      = make(map[string]*Group)
-	groupLogger = log.Mylog.WithFields(logrus.Fields{
-		"component": "TDKCache",
-		"category":  "Group",
-	})
+	groupLogger = log.NewLogger("Cache", "Group")
 )
 
 func NewGroup(name string, capacity int64, getter Getter) *Group {
@@ -73,8 +68,15 @@ func (g *Group) Get(key string) (ByteView, error) {
 	return g.load(key)
 }
 
-// getFromPeer get key from peer
-//HTTP
+func (g *Group) Delete(key string) error {
+	if key == "" {
+		return fmt.Errorf("key is required")
+	}
+
+	g.mainCache.delete(key)
+	return nil
+
+}
 
 func (g *Group) getFromPeer(peer peers.PeerGetter, key string) (ByteView, error) {
 	if bytes, err := peer.Get(g.name, key); err != nil {

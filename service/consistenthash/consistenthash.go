@@ -6,8 +6,6 @@ import (
 	"hash/crc32"
 	"sort"
 	"sync"
-
-	"github.com/sirupsen/logrus"
 )
 
 // 定义哈希函数,将[]byte映射到int32
@@ -26,7 +24,7 @@ type HashRing struct {
 	// 记录所有真实节点
 	nodes map[string]struct{}
 	// 日志
-	logger *log.TubeEntry
+	logger *log.LogEntry
 	// 读写锁
 	lck sync.RWMutex
 }
@@ -39,11 +37,8 @@ func NewHashRing(hash Hash, replicas int) *HashRing {
 		ring:      make([]uint32, 0),
 		hash2node: make(map[uint32]string),
 		nodes:     make(map[string]struct{}),
-		logger: log.Mylog.WithFields(logrus.Fields{
-			"component": "TDKCache",
-			"category":  "Consistent Hash",
-		}),
-		lck: sync.RWMutex{},
+		logger:    log.NewLogger("Cache", "Consistent Hash"),
+		lck:       sync.RWMutex{},
 	}
 	if ring.hash == nil {
 		ring.hash = crc32.ChecksumIEEE

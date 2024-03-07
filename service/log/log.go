@@ -1,6 +1,7 @@
 package log
 
 import (
+	"TDKCache/service/conf"
 	"fmt"
 	"io"
 	"os"
@@ -16,41 +17,52 @@ type TubeLogger struct {
 	logger *logrus.Logger
 }
 
-type TubeEntry struct {
+type LogEntry struct {
 	entry *logrus.Entry
 }
 
-func (logger *TubeLogger) WithFields(fields logrus.Fields) *TubeEntry {
-	return &TubeEntry{
+func NewLogger(component string, category string) *LogEntry {
+	return &LogEntry{
+		entry: Mylog.logger.WithFields(
+			logrus.Fields{
+				"component": component,
+				"category":  category,
+			},
+		),
+	}
+}
+
+func (logger *TubeLogger) WithFields(fields logrus.Fields) *LogEntry {
+	return &LogEntry{
 		entry: logger.logger.WithFields(fields),
 	}
 }
 
-func (e *TubeEntry) Trace(format string, v ...any) {
+func (e *LogEntry) Trace(format string, v ...any) {
 	e.entry.Tracef(fmt.Sprintf(format, v...))
 }
 
-func (e *TubeEntry) Debug(format string, v ...any) {
+func (e *LogEntry) Debug(format string, v ...any) {
 	e.entry.Debug(fmt.Sprintf(format, v...))
 }
 
-func (e *TubeEntry) Info(format string, v ...any) {
+func (e *LogEntry) Info(format string, v ...any) {
 	e.entry.Info(fmt.Sprintf(format, v...))
 }
 
-func (e *TubeEntry) Warn(format string, v ...any) {
+func (e *LogEntry) Warn(format string, v ...any) {
 	e.entry.Warn(fmt.Sprintf(format, v...))
 }
 
-func (e *TubeEntry) Error(format string, v ...any) {
+func (e *LogEntry) Error(format string, v ...any) {
 	e.entry.Error(fmt.Sprintf(format, v...))
 }
 
-func (e *TubeEntry) Fatal(format string, v ...any) {
+func (e *LogEntry) Fatal(format string, v ...any) {
 	e.entry.Fatal(fmt.Sprintf(format, v...))
 }
 
-func (e *TubeEntry) Panic(format string, v ...any) {
+func (e *LogEntry) Panic(format string, v ...any) {
 	e.entry.Panic(fmt.Sprintf(format, v...))
 }
 
@@ -59,7 +71,7 @@ var Mylog = &TubeLogger{logger: logrus.New()}
 func init() {
 
 	// 设置输出文件
-	filePath := "/home/TDK/Projects/Go/Project/TDKCache/log/"
+	filePath := conf.Conf.GetString("log.logDir")
 	linkName := filePath + "latest_log.log"
 	//        打开指定处的文件，并指定权限为：可读可写，可创建
 	src, err := os.OpenFile(linkName, os.O_RDWR|os.O_CREATE, 0755) //0755-> rwx r-x r-x linux知识
@@ -77,7 +89,7 @@ func init() {
 	})
 
 	// 设置日志级别。低于 Debug 级别的 Trace 将不会被打印
-	Mylog.logger.SetLevel(logrus.InfoLevel)
+	Mylog.logger.SetLevel(logrus.AllLevels[conf.Conf.GetUint32("log.logLevel")])
 
 	// 设置日志切割 rotatelogs
 	writer, _ := rotatelogs.New(
