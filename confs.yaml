@@ -1,3 +1,4 @@
+hostname: "your.hostname"
 etcd:
   endpoints: "http://your.etcd.endpoint"
   ttl: 10
