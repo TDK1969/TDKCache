@@ -25,6 +25,7 @@ const (
 type RPCServer struct {
 	self     string
 	addr     string
+	port     int
 	mu       sync.Mutex
 	peersMap *consistenthash.HashRing
 	getters  map[string]*RPCGetter
@@ -36,14 +37,16 @@ type RPCServer struct {
 
 var rpcLogger *log.LogEntry
 
-func NewRPCServer(addr string) *RPCServer {
-	rpcLogger = log.NewLogger("RPC Server", fmt.Sprintf("Server <%s>", addr))
+func NewRPCServer(port int) *RPCServer {
+
 	s := &RPCServer{
-		self:     addr,
-		addr:     addr,
+		self:     fmt.Sprintf("%s:%d", conf.Conf.GetString("hostname"), port),
+		addr:     fmt.Sprintf("%s:%d", conf.Conf.GetString("hostname"), port),
+		port:     port,
 		peersMap: consistenthash.NewHashRing(nil, defaultReplicas),
 		getters:  make(map[string]*RPCGetter),
 	}
+	rpcLogger = log.NewLogger("RPC Server", fmt.Sprintf("Server <%s>", s.addr))
 	return s
 }
 
@@ -76,7 +79,7 @@ func (s *RPCServer) PickPeer(key string) (peers.PeerGetter, bool) {
 }
 
 func (s *RPCServer) listenAndServe() {
-	lis, err := net.Listen("tcp", s.addr)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
 	if err != nil {
 		rpcLogger.Error("failed to listen: %v", err)
 		return

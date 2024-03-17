@@ -49,6 +49,6 @@ func main() {
 	}
 
 	//s = http_server.NewHTTPPool(addrMap[port])
-	s = rpc.NewRPCServer(fmt.Sprintf(":%d", serverPort))
+	s = rpc.NewRPCServer(serverPort)
 	s.Start(g)
 }
